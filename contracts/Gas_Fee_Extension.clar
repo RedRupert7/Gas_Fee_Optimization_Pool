@@ -28,3 +28,33 @@
 (define-data-var min-batch-size uint u5)
 (define-data-var max-batch-size uint u20)
 (define-data-var gas-optimization-enabled bool true)
+
+;; Data Maps
+(define-map extended-tx-data
+  { tx-id: uint }
+  {
+    priority: uint,
+    scheduled-time: uint,
+    gas-price: uint,
+    batch-id: (optional uint)
+  }
+)
+
+(define-map batch-data
+  { batch-id: uint }
+  {
+    tx-count: uint,
+    total-amount: uint,
+    status: (string-ascii 20),
+    created-at: uint
+  }
+)
+
+(define-map user-stats
+  principal
+  {
+    total-transactions: uint,
+    total-amount: uint,
+    last-active: uint
+  }
+)
