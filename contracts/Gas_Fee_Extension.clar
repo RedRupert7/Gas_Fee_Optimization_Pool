@@ -147,3 +147,24 @@
         )
         (ok next-id))
       error (err error))))
+
+      ;; Admin Functions
+(define-public (set-admin (new-admin principal))
+  (begin
+    (asserts! (is-eq tx-sender (var-get admin)) ERR_UNAUTHORIZED)
+    (var-set admin new-admin)
+    (ok true)))
+
+(define-public (set-batch-sizes (min uint) (max uint))
+  (begin
+    (asserts! (is-eq tx-sender (var-get admin)) ERR_UNAUTHORIZED)
+    (asserts! (< min max) ERR_INVALID_AMOUNT)
+    (var-set min-batch-size min)
+    (var-set max-batch-size max)
+    (ok true)))
+
+(define-public (toggle-gas-optimization)
+  (begin
+    (asserts! (is-eq tx-sender (var-get admin)) ERR_UNAUTHORIZED)
+    (var-set gas-optimization-enabled (not (var-get gas-optimization-enabled)))
+    (ok true)))
