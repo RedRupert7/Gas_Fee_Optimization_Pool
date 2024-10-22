@@ -4,9 +4,14 @@ authors = []
 description = ""
 telemetry = true
 requirements = []
+
 [contracts.Gas_Fee_Optimization_Pool]
 path = "contracts/Gas_Fee_Optimization_Pool.clar"
 depends_on = []
+
+[contracts.Gas_Fee_Extension]
+path = "contracts/Gas_Fee_Extension.clar"
+depends_on = ["Gas_Fee_Optimization_Pool"]
 
 [repl]
 costs_version = 2
