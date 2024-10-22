@@ -168,3 +168,21 @@
     (asserts! (is-eq tx-sender (var-get admin)) ERR_UNAUTHORIZED)
     (var-set gas-optimization-enabled (not (var-get gas-optimization-enabled)))
     (ok true)))
+
+  ;; Read-only Functions
+(define-read-only (get-transaction-details (tx-id uint))
+  (ok (map-get? extended-tx-data {tx-id: tx-id})))
+
+(define-read-only (get-user-statistics (user principal))
+  (ok (map-get? user-stats user)))
+
+(define-read-only (get-batch-details (batch-id uint))
+  (ok (map-get? batch-data {batch-id: batch-id})))
+
+(define-read-only (get-contract-settings)
+  (ok {
+    min-batch-size: (var-get min-batch-size),
+    max-batch-size: (var-get max-batch-size),
+    gas-optimization-enabled: (var-get gas-optimization-enabled),
+    admin: (var-get admin)
+  }))
