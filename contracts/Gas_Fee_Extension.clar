@@ -58,3 +58,25 @@
     last-active: uint
   }
 )
+
+;; Private Functions
+(define-private (update-user-stats (user principal) (amount uint))
+  (let (
+    (current-stats (default-to 
+      { total-transactions: u0, total-amount: u0, last-active: u0 }
+      (map-get? user-stats user)))
+  )
+    (map-set user-stats
+      user
+      {
+        total-transactions: (+ (get total-transactions current-stats) u1),
+        total-amount: (+ (get total-amount current-stats) amount),
+        last-active: block-height
+      }
+    )
+  ))
+
+(define-private (is-optimal-gas-time)
+  (let ((current-height block-height))
+    ;; Simple gas optimization check based on block height
+    (is-eq (mod current-height u10) u0)))
