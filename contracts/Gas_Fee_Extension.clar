@@ -80,3 +80,109 @@
   (let ((current-height block-height))
     ;; Simple gas optimization check based on block height
     (is-eq (mod current-height u10) u0)))
+
+    ;; Public Functions
+(define-public (add-priority-transaction (gas-pool-contract <gas-pool-trait>) (recipient principal) (amount uint) (priority uint))
+  (let (
+    (sender tx-sender)
+  )
+    ;; Call base contract first
+    (match (contract-call? gas-pool-contract add-transaction recipient amount)
+      success-id (begin
+        ;; Add extended data
+        (map-set extended-tx-data
+          { tx-id: success-id }
+          {
+            priority: priority,
+            scheduled-time: block-height,
+            gas-price: u0,
+            batch-id: none
+          }
+        )
+        ;; Update user statistics
+        (update-user-stats sender amount)
+        (ok success-id))
+      error (err error))))
+
+(define-public (create-batch (start-id uint) (end-id uint))
+  (let (
+    (batch-size (- end-id start-id))
+  )
+    ;; Validate batch size
+    (asserts! (and 
+      (>= batch-size (var-get min-batch-size))
+      (<= batch-size (var-get max-batch-size))) 
+      ERR_INVALID_AMOUNT)
+    
+    ;; Create batch entry
+    (map-set batch-data
+      { batch-id: start-id }
+      {
+        tx-count: batch-size,
+        total-amount: u0,
+        status: "pending",
+        created-at: block-height
+      }
+    )
+    (ok start-id)))
+
+(define-public (process-optimized-batch (gas-pool-contract <gas-pool-trait>) (batch-id uint))
+  (let (
+    (batch (unwrap! (map-get? batch-data { batch-id: batch-id }) ERR_NO_TRANSACTIONS))
+  )
+    ;; Check if it's optimal gas time
+    (asserts! (or 
+      (not (var-get gas-optimization-enabled))
+      (is-optimal-gas-time))
+      ERR_INVALID_TIME)
+    
+    ;; Process batch transactions
+    (match (contract-call? gas-pool-contract process-next-transaction 
+      batch-id 
+      (+ batch-id (get tx-count batch)))
+      next-id (begin
+        (map-set batch-data
+          { batch-id: batch-id }
+          (merge batch { status: "completed" })
+        )
+        (ok next-id))
+      error (err error))))
+
+      ;; Admin Functions
+(define-public (set-admin (new-admin principal))
+  (begin
+    (asserts! (is-eq tx-sender (var-get admin)) ERR_UNAUTHORIZED)
+    (var-set admin new-admin)
+    (ok true)))
+
+(define-public (set-batch-sizes (min uint) (max uint))
+  (begin
+    (asserts! (is-eq tx-sender (var-get admin)) ERR_UNAUTHORIZED)
+    (asserts! (< min max) ERR_INVALID_AMOUNT)
+    (var-set min-batch-size min)
+    (var-set max-batch-size max)
+    (ok true)))
+
+(define-public (toggle-gas-optimization)
+  (begin
+    (asserts! (is-eq tx-sender (var-get admin)) ERR_UNAUTHORIZED)
+    (var-set gas-optimization-enabled (not (var-get gas-optimization-enabled)))
+    (ok true)))
+
+  ;; Read-only Functions
+(define-read-only (get-transaction-details (tx-id uint))
+  (ok (map-get? extended-tx-data {tx-id: tx-id})))
+
+(define-read-only (get-user-statistics (user principal))
+  (ok (map-get? user-stats user)))
+
+(define-read-only (get-batch-details (batch-id uint))
+  (ok (map-get? batch-data {batch-id: batch-id})))
+
+(define-read-only (get-contract-settings)
+  (ok {
+    min-batch-size: (var-get min-batch-size),
+    max-batch-size: (var-get max-batch-size),
+    gas-optimization-enabled: (var-get gas-optimization-enabled),
+    admin: (var-get admin)
+  }))
